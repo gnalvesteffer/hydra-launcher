@@ -1,8 +1,9 @@
-$background-color: #121212;
-$dark-background-color: #0d0d0d;
+// Steam Big Picture palette
+$background-color: #1b2838;
+$dark-background-color: #171a21;
 
-$muted-color: #f0f1f7;
-$body-color: #d0d1d7;
+$muted-color: #c6d4df;
+$body-color: #acb2b8;
 
 $border-color: rgba(255, 255, 255, 0.08);
 $success-color: #1c9749;
@@ -11,7 +12,7 @@ $error-color: #e11d48;
 $warning-color: #ffc107;
 
 $brand-teal: #16b195;
-$brand-blue: #3e62c0;
+$brand-blue: #1a9fff;
 
 $disabled-opacity: 0.5;
 $active-opacity: 0.7;
@@ -24,7 +25,7 @@ $title-bar-z-index: 4;
 $backdrop-z-index: 4;
 $modal-z-index: 5;
 
-$body-font-size: 14px;
-$small-font-size: 12px;
+$body-font-size: 15px;
+$small-font-size: 13px;
 
 $app-container: app-container;

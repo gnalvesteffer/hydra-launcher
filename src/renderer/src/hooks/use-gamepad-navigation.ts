@@ -418,6 +418,12 @@ export function useGamepadNavigation() {
         dispatchMouseEvent("mousedown", x, y);
         dispatchMouseEvent("mouseup",   x, y);
         dispatchMouseEvent("click",     x, y);
+        // Also focus input/textarea elements so the keyboard activates
+        const rtTarget = document.elementFromPoint(x, y) as HTMLElement | null;
+        if (rtTarget) {
+          const focusable = rtTarget.closest("input, textarea, [contenteditable]") as HTMLElement | null;
+          if (focusable) focusable.focus();
+        }
       }
 
       // LT = right click (contextmenu)

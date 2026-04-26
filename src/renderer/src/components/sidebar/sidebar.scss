@@ -1,7 +1,7 @@
 @use "../../scss/globals.scss";
 
 .sidebar {
-  background-color: globals.$dark-background-color;
+  background-color: #16202d;
   color: globals.$muted-color;
   flex-direction: column;
   display: flex;
@@ -57,11 +57,14 @@
     border-radius: 4px;
 
     &:hover {
-      background-color: rgba(255, 255, 255, 0.15);
+      background-color: rgba(255, 255, 255, 0.08);
+      color: #e8eaed;
     }
 
     &--active {
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: rgba(26, 159, 255, 0.15);
+      border-left: 3px solid #1a9fff;
+      color: #fff;
     }
 
     &--muted {
@@ -98,7 +101,7 @@
     cursor: pointer;
     overflow: hidden;
     width: 100%;
-    padding: 9px globals.$spacing-unit;
+    padding: 12px globals.$spacing-unit;
   }
 
   &__menu-item-button-label {

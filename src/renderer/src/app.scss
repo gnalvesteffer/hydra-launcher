@@ -38,6 +38,7 @@ body {
   font-size: globals.$body-font-size;
   color: globals.$body-color;
   margin: 0;
+  background-color: #1b2838;
 }
 
 button {
@@ -152,3 +153,10 @@ body[data-gamepad="true"] *:focus:not(:focus-visible) {
   outline: 3px solid #c6a0f6 !important;
 }
 
+
+/* Steam Big Picture gamepad focus ring */
+.__gamepad_focus__ {
+  outline: 3px solid #1a9fff !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(26, 159, 255, 0.25) !important;
+}
