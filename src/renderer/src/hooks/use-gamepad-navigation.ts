@@ -114,7 +114,7 @@ function scrollActiveContainer(direction: "up" | "down") {
 }
 
 export function useGamepadNavigation() {
-  const buttonStates = useRef<Map<number, ButtonState>>(new Map());
+  const buttonStates = useRef<Map<string, ButtonState>>(new Map());
   const animFrameRef = useRef<number | null>(null);
   const gamepadNavigationActive = useRef(false);
 
@@ -122,11 +122,16 @@ export function useGamepadNavigation() {
     const handleGamepadConnected = (e: GamepadEvent) => {
       gamepadNavigationActive.current = true;
       document.body.setAttribute("data-gamepad", "true");
-      logger.info(`[gamepad] connected: ${e.gamepad.id}`);
+      logger.info(`[gamepad] connected: ${e.gamepad.id} (index ${e.gamepad.index})`);
     };
 
-    const handleGamepadDisconnected = () => {
-      // Only disable if no other gamepads are connected
+    const handleGamepadDisconnected = (e: GamepadEvent) => {
+      // Clear state for the disconnected controller
+      const prefix = `${e.gamepad.index}_`;
+      for (const key of buttonStates.current.keys()) {
+        if (key.startsWith(prefix)) buttonStates.current.delete(key);
+      }
+      // Only disable navigation mode if no other gamepads remain
       if (navigator.getGamepads().every((g) => g === null)) {
         gamepadNavigationActive.current = false;
         document.body.removeAttribute("data-gamepad");
@@ -202,14 +207,16 @@ export function useGamepadNavigation() {
       for (const gamepad of navigator.getGamepads()) {
         if (!gamepad) continue;
 
-        // Process buttons
+        // Process buttons — keyed by gamepadIndex_buttonIndex so multiple
+        // controllers don't overwrite each other's state.
         gamepad.buttons.forEach((button, index) => {
-          const prev = buttonStates.current.get(index);
+          const key = `${gamepad.index}_${index}`;
+          const prev = buttonStates.current.get(key);
 
           if (button.pressed) {
             if (!prev || !prev.pressed) {
               // First press
-              buttonStates.current.set(index, {
+              buttonStates.current.set(key, {
                 pressed: true,
                 firstPressAt: now,
                 lastRepeatAt: now,
@@ -228,7 +235,7 @@ export function useGamepadNavigation() {
               }
             }
           } else if (prev?.pressed) {
-            buttonStates.current.set(index, {
+            buttonStates.current.set(key, {
               pressed: false,
               firstPressAt: 0,
               lastRepeatAt: 0,
@@ -245,7 +252,7 @@ export function useGamepadNavigation() {
 
         // Scroll with left stick vertical
         if (Math.abs(ly) > STICK_DEAD_ZONE) {
-          const stickKey = 100; // virtual key for left stick Y
+          const stickKey = `${gamepad.index}_100`; // virtual key for left stick Y
           const prev = buttonStates.current.get(stickKey);
           const direction = ly > 0 ? "down" : "up";
 
@@ -266,7 +273,7 @@ export function useGamepadNavigation() {
 
         // Focus navigation with right stick vertical
         if (Math.abs(ry) > STICK_DEAD_ZONE) {
-          const stickKey = 101;
+          const stickKey = `${gamepad.index}_101`;
           const prev = buttonStates.current.get(stickKey);
           const direction = ry > 0 ? "forward" : "backward";
 
