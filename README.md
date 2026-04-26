@@ -1,3 +1,33 @@
+> **This is a personal fork of [Hydra Launcher](https://github.com/hydralauncher/hydra) by [gnalvesteffer](https://github.com/gnalvesteffer).**
+> Branch: `main-xorberax`
+
+## Fork Changes
+
+### Steam Deck / Gamepad Support
+- **Right stick** moves a virtual cursor (white dot) around the screen
+- **RT** (right trigger) = left click at cursor position
+- **LT** (left trigger) = right click at cursor position
+- **Left stick** scrolls the element under the cursor (both axes)
+- **LB / RB** navigate between sidebar panes
+- All connected controllers contribute input simultaneously
+- Debug overlay (toggle with Select button) shows live axes values
+
+### UI
+- Scrollbars widened from 9px to 16px for easier touch/cursor interaction
+
+### Browse Library
+- New "Browse Library" modal that fetches game sources from library.hydra.wiki
+
+### Debrid-Only Mode
+- Option to hide the BitTorrent downloader and use only debrid services
+
+### Steam Deck Fixes
+- `launch.sh` updated to launch AppImage with Wayland display server
+- API URL updated to losbroxas.org
+- `native-addon` and `python-rpc` made non-fatal so the app launches on Steam Deck without Rust/Python builds
+
+---
+
 <div align="center">
 
 [<img src="https://raw.githubusercontent.com/hydralauncher/hydra/refs/heads/main/resources/icon.png" width="144"/>](https://help.hydralauncher.gg)
