@@ -32,7 +32,7 @@ export function GamepadHintBar() {
     return () => observer.disconnect();
   }, []);
 
-  if (!visible) return null;
+  return null; // hints hidden — they cover the status bar
 
   return (
     <div className="gamepad-hint-bar" aria-hidden="true">

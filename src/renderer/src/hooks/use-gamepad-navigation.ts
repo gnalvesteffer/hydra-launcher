@@ -69,7 +69,8 @@ function updateDebugOverlay(gamepad: Gamepad) {
 // ---------- END DEBUG OVERLAY ----------
 
 // Virtual cursor speed (pixels per frame at full deflection)
-const CURSOR_SPEED = 18;
+const CURSOR_SPEED = 24;       // max pixels per frame at full stick deflection
+const CURSOR_SPEED_EXPONENT = 2; // >1 = precision near center, fast at edges
 
 type ButtonState = {
   pressed: boolean;
@@ -401,8 +402,12 @@ export function useGamepadNavigation() {
       // Apply accumulated right-stick cursor movement from ALL controllers
       if ((totalRx !== 0 || totalRy !== 0) && cursorEl.current) {
         const pos = cursorPos.current;
-        pos.x = Math.max(0, Math.min(window.innerWidth,  pos.x + totalRx * CURSOR_SPEED));
-        pos.y = Math.max(0, Math.min(window.innerHeight, pos.y + totalRy * CURSOR_SPEED));
+        const signX = totalRx >= 0 ? 1 : -1;
+        const signY = totalRy >= 0 ? 1 : -1;
+        const vx = signX * Math.pow(Math.abs(totalRx), CURSOR_SPEED_EXPONENT) * CURSOR_SPEED;
+        const vy = signY * Math.pow(Math.abs(totalRy), CURSOR_SPEED_EXPONENT) * CURSOR_SPEED;
+        pos.x = Math.max(0, Math.min(window.innerWidth,  pos.x + vx));
+        pos.y = Math.max(0, Math.min(window.innerHeight, pos.y + vy));
         cursorEl.current.style.left = `${pos.x}px`;
         cursorEl.current.style.top  = `${pos.y}px`;
 
@@ -418,12 +423,7 @@ export function useGamepadNavigation() {
         dispatchMouseEvent("mousedown", x, y);
         dispatchMouseEvent("mouseup",   x, y);
         dispatchMouseEvent("click",     x, y);
-        // Also focus input/textarea elements so the keyboard activates
-        const rtTarget = document.elementFromPoint(x, y) as HTMLElement | null;
-        if (rtTarget) {
-          const focusable = rtTarget.closest("input, textarea, [contenteditable]") as HTMLElement | null;
-          if (focusable) focusable.focus();
-        }
+
       }
 
       // LT = right click (contextmenu)
