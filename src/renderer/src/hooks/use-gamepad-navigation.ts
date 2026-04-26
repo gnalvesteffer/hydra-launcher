@@ -220,28 +220,7 @@ export function useGamepadNavigation() {
 
     function handleButtonAction(buttonIndex: number, isFirstPress: boolean) {
       switch (buttonIndex) {
-        case BUTTON.DPAD_DOWN:
-          moveFocus("forward");
-          break;
-        case BUTTON.DPAD_UP:
-          moveFocus("backward");
-          break;
-        case BUTTON.DPAD_RIGHT:
-          // Navigate to next pane
-          if (isFirstPress) {
-            document.dispatchEvent(
-              new CustomEvent("gamepad:navigate-next", { bubbles: true })
-            );
-          }
-          break;
-        case BUTTON.DPAD_LEFT:
-          // Navigate to previous pane
-          if (isFirstPress) {
-            document.dispatchEvent(
-              new CustomEvent("gamepad:navigate-prev", { bubbles: true })
-            );
-          }
-          break;
+
         case BUTTON.A:
           if (isFirstPress) pressEnter();
           break;
@@ -281,6 +260,7 @@ export function useGamepadNavigation() {
       let totalRx = 0;
       let totalRy = 0;
       let rtFired = false;
+      let ltFired = false;
 
       for (const gamepad of navigator.getGamepads()) {
         if (!gamepad) continue;
@@ -301,18 +281,7 @@ export function useGamepadNavigation() {
               });
               logger.info(`[gamepad] button pressed: gp=${gamepad.index} btn=${index}`);
               handleButtonAction(index, true);
-            } else if (shouldRepeat(prev, now)) {
-              // Auto-repeat for navigation buttons
-              if (
-                index === BUTTON.DPAD_UP ||
-                index === BUTTON.DPAD_DOWN ||
-                index === BUTTON.DPAD_LEFT ||
-                index === BUTTON.DPAD_RIGHT
-              ) {
-                prev.lastRepeatAt = now;
-                handleButtonAction(index, false);
-              }
-            }
+
           } else if (prev?.pressed) {
             buttonStates.current.set(key, {
               pressed: false,
@@ -374,15 +343,28 @@ export function useGamepadNavigation() {
         if (Math.abs(rx) > STICK_DEAD_ZONE) totalRx += rx;
         if (Math.abs(ry) > STICK_DEAD_ZONE) totalRy += ry;
 
-        // Right trigger (RT = button 7) — mark fired, applied after loop
+        // RT (button 7) = left click — use value>0.1 for analog triggers
         const rtKey = `${gamepad.index}_rt`;
         const rtButton = gamepad.buttons[BUTTON.RT];
+        const rtActive = (rtButton?.value ?? 0) > 0.1 || rtButton?.pressed;
         const rtWasPressed = buttonStates.current.get(rtKey)?.pressed ?? false;
-        if (rtButton?.pressed && !rtWasPressed) {
+        if (rtActive && !rtWasPressed) {
           buttonStates.current.set(rtKey, { pressed: true, firstPressAt: now, lastRepeatAt: now });
           rtFired = true;
-        } else if (!rtButton?.pressed && rtWasPressed) {
+        } else if (!rtActive && rtWasPressed) {
           buttonStates.current.set(rtKey, { pressed: false, firstPressAt: 0, lastRepeatAt: 0 });
+        }
+
+        // LT (button 6) = right click
+        const ltKey = `${gamepad.index}_lt`;
+        const ltButton = gamepad.buttons[BUTTON.LT];
+        const ltActive = (ltButton?.value ?? 0) > 0.1 || ltButton?.pressed;
+        const ltWasPressed = buttonStates.current.get(ltKey)?.pressed ?? false;
+        if (ltActive && !ltWasPressed) {
+          buttonStates.current.set(ltKey, { pressed: true, firstPressAt: now, lastRepeatAt: now });
+          ltFired = true;
+        } else if (!ltActive && ltWasPressed) {
+          buttonStates.current.set(ltKey, { pressed: false, firstPressAt: 0, lastRepeatAt: 0 });
         }
       }
 
@@ -399,12 +381,18 @@ export function useGamepadNavigation() {
         cursorEl.current.style.opacity = "0";
       }
 
-      // Fire RT click if any controller triggered it this frame
+      // RT = left click
       if (rtFired) {
         const { x, y } = cursorPos.current;
         dispatchMouseEvent("mousedown", x, y);
         dispatchMouseEvent("mouseup",   x, y);
         dispatchMouseEvent("click",     x, y);
+      }
+
+      // LT = right click (contextmenu)
+      if (ltFired) {
+        const { x, y } = cursorPos.current;
+        dispatchMouseEvent("contextmenu", x, y);
       }
 
       animFrameRef.current = requestAnimationFrame(pollGamepads);
