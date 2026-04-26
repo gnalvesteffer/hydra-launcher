@@ -181,7 +181,7 @@ export function useGamepadNavigation() {
     const handleGamepadConnected = (e: GamepadEvent) => {
       gamepadNavigationActive.current = true;
       document.body.setAttribute("data-gamepad", "true");
-      logger.info(`[gamepad] connected: ${e.gamepad.id} (index ${e.gamepad.index})`);
+      logger.info(`[gamepad] connected: ${e.gamepad.id} (index ${e.gamepad.index}) mapping=${e.gamepad.mapping} axes=${e.gamepad.axes.length}`);
     };
 
     const handleGamepadDisconnected = (e: GamepadEvent) => {
@@ -325,9 +325,17 @@ export function useGamepadNavigation() {
         const lx = gamepad.axes[0] ?? 0;
         const ly = gamepad.axes[1] ?? 0;
 
-        // Right stick axes: 2=RX, 3=RY — used for virtual cursor
-        const rx = gamepad.axes[2] ?? 0;
-        const ry = gamepad.axes[3] ?? 0;
+        // Right stick axes depend on mapping:
+        //   "standard" (Xbox/DS4 in browser standard mode): RX=axes[2], RY=axes[3]
+        //   non-standard (Steam Deck, many Linux HID): triggers on axes[2]/[3], RX=axes[4], RY=axes[5]
+        const isStandard = gamepad.mapping === "standard";
+        const rx = isStandard ? (gamepad.axes[2] ?? 0) : (gamepad.axes[3] ?? 0);
+        const ry = isStandard ? (gamepad.axes[3] ?? 0) : (gamepad.axes[4] ?? 0);
+
+        // DEBUG: log all axes every ~120 frames so we can identify the right-stick axis indices
+        if (Math.floor(now / 2000) !== Math.floor((now - 16) / 2000)) {
+          logger.info(`[gamepad] idx=${gamepad.index} mapping=${gamepad.mapping} axes=[${Array.from(gamepad.axes).map((v) => v.toFixed(2)).join(",")}]`);
+        }
 
         // Left stick vertical → vertical scroll
         if (Math.abs(ly) > STICK_DEAD_ZONE) {
