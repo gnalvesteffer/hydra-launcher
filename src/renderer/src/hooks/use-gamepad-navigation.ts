@@ -299,6 +299,7 @@ export function useGamepadNavigation() {
                 firstPressAt: now,
                 lastRepeatAt: now,
               });
+              logger.info(`[gamepad] button pressed: gp=${gamepad.index} btn=${index}`);
               handleButtonAction(index, true);
             } else if (shouldRepeat(prev, now)) {
               // Auto-repeat for navigation buttons
