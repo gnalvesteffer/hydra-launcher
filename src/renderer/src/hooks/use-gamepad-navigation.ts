@@ -98,38 +98,20 @@ function focusSearch() {
   search?.focus();
 }
 
-function scrollActiveContainer(direction: "up" | "down") {
-  // Walk up the DOM from active element to find a scrollable ancestor
-  let el: HTMLElement | null = document.activeElement as HTMLElement | null;
+function scrollFromPoint(x: number, y: number, deltaX: number, deltaY: number) {
+  // Walk up from the element under the cursor to find a scrollable ancestor
+  let el: HTMLElement | null = document.elementFromPoint(x, y) as HTMLElement | null;
   while (el && el !== document.body) {
-    const overflow = window.getComputedStyle(el).overflowY;
-    if (
-      (overflow === "auto" || overflow === "scroll") &&
-      el.scrollHeight > el.clientHeight
-    ) {
-      el.scrollBy({ top: direction === "down" ? 120 : -120, behavior: "smooth" });
+    const style = window.getComputedStyle(el);
+    const canScrollY = deltaY !== 0 && (style.overflowY === "auto" || style.overflowY === "scroll") && el.scrollHeight > el.clientHeight;
+    const canScrollX = deltaX !== 0 && (style.overflowX === "auto" || style.overflowX === "scroll") && el.scrollWidth > el.clientWidth;
+    if (canScrollY || canScrollX) {
+      el.scrollBy({ left: deltaX, top: deltaY, behavior: "smooth" });
       return;
     }
     el = el.parentElement;
   }
-  // Fall back to window scroll
-  window.scrollBy({ top: direction === "down" ? 120 : -120, behavior: "smooth" });
-}
-
-function scrollActiveContainerH(amount: number) {
-  let el: HTMLElement | null = document.activeElement as HTMLElement | null;
-  while (el && el !== document.body) {
-    const overflow = window.getComputedStyle(el).overflowX;
-    if (
-      (overflow === "auto" || overflow === "scroll") &&
-      el.scrollWidth > el.clientWidth
-    ) {
-      el.scrollBy({ left: amount, behavior: "smooth" });
-      return;
-    }
-    el = el.parentElement;
-  }
-  window.scrollBy({ left: amount, behavior: "smooth" });
+  window.scrollBy({ left: deltaX, top: deltaY, behavior: "smooth" });
 }
 
 // ── Virtual cursor helpers ──────────────────────────────────────────────────
@@ -307,62 +289,62 @@ export function useGamepadNavigation() {
           logger.info(`[gamepad] idx=${gamepad.index} mapping=${gamepad.mapping} axes=[${Array.from(gamepad.axes).map((v) => v.toFixed(2)).join(",")}]`);
         }
 
-        // Left stick vertical → vertical scroll
-        if (Math.abs(ly) > STICK_DEAD_ZONE) {
-          const stickKeyY = `${gamepad.index}_100`;
-          const prevY = buttonStates.current.get(stickKeyY);
-          const directionY = ly > 0 ? "down" : "up";
-          if (!prevY?.pressed) {
-            buttonStates.current.set(stickKeyY, { pressed: true, firstPressAt: now, lastRepeatAt: now });
-            scrollActiveContainer(directionY);
-          } else if (shouldRepeat(prevY, now)) {
-            prevY.lastRepeatAt = now;
-            scrollActiveContainer(directionY);
+        // Left stick → scroll from cursor position
+        if (Math.abs(lx) > STICK_DEAD_ZONE || Math.abs(ly) > STICK_DEAD_ZONE) {
+          const stickKey = `${gamepad.index}_100`;
+          const prevStick = buttonStates.current.get(stickKey);
+          if (!prevStick?.pressed) {
+            buttonStates.current.set(stickKey, { pressed: true, firstPressAt: now, lastRepeatAt: now });
+            scrollFromPoint(cursorPos.current.x, cursorPos.current.y, lx * 120, ly * 120);
+          } else if (shouldRepeat(prevStick, now)) {
+            prevStick.lastRepeatAt = now;
+            scrollFromPoint(cursorPos.current.x, cursorPos.current.y, lx * 120, ly * 120);
           }
         } else {
           buttonStates.current.delete(`${gamepad.index}_100`);
-        }
-
-        // Left stick horizontal → horizontal scroll
-        if (Math.abs(lx) > STICK_DEAD_ZONE) {
-          const stickKeyX = `${gamepad.index}_102`;
-          const prevX = buttonStates.current.get(stickKeyX);
-          const scrollAmountX = lx * 120;
-          if (!prevX?.pressed) {
-            buttonStates.current.set(stickKeyX, { pressed: true, firstPressAt: now, lastRepeatAt: now });
-            scrollActiveContainerH(scrollAmountX);
-          } else if (shouldRepeat(prevX, now)) {
-            prevX.lastRepeatAt = now;
-            scrollActiveContainerH(scrollAmountX);
-          }
-        } else {
-          buttonStates.current.delete(`${gamepad.index}_102`);
         }
 
         // Accumulate right stick delta — applied after all controllers processed
         if (Math.abs(rx) > STICK_DEAD_ZONE) totalRx += rx;
         if (Math.abs(ry) > STICK_DEAD_ZONE) totalRy += ry;
 
-        // RT (button 7) = left click — use value>0.1 for analog triggers
+        // RT = left click, LT = right click
+        // Triggers may appear as buttons (standard) or axes (Xbox Linux non-standard)
+        // standard: buttons[7]=RT, buttons[6]=LT
+        // non-standard axes: axes[5]=RT, axes[4]=LT (or axes[2]/axes[3] on some)
+        const rtBtnVal = (gamepad.buttons[BUTTON.RT]?.value ?? 0);
+        const ltBtnVal = (gamepad.buttons[BUTTON.LT]?.value ?? 0);
+        // Also check axes that commonly carry trigger data on Linux
+        const axisCount = gamepad.axes.length;
+        const rtAxisVal = isStandard
+          ? 0  // standard mapping uses buttons only
+          : Math.max(
+              (gamepad.axes[axisCount - 1] ?? 0),  // last axis (often RT)
+              (gamepad.axes[axisCount >= 2 ? axisCount - 2 : 0] ?? 0)  // second-last (often LT)
+            );
+        // Use dedicated per-axis keys for axis-based triggers
+        const rtAxisRaw = isStandard ? 0 : (gamepad.axes[axisCount - 1] ?? 0);
+        const ltAxisRaw = isStandard ? 0 : (gamepad.axes[axisCount >= 2 ? axisCount - 2 : 0] ?? 0);
+        void rtAxisVal;
+
         const rtKey = `${gamepad.index}_rt`;
-        const rtButton = gamepad.buttons[BUTTON.RT];
-        const rtActive = (rtButton?.value ?? 0) > 0.1 || rtButton?.pressed;
+        const rtActive = rtBtnVal > 0.1 || gamepad.buttons[BUTTON.RT]?.pressed || rtAxisRaw > 0.1;
         const rtWasPressed = buttonStates.current.get(rtKey)?.pressed ?? false;
         if (rtActive && !rtWasPressed) {
           buttonStates.current.set(rtKey, { pressed: true, firstPressAt: now, lastRepeatAt: now });
           rtFired = true;
+          logger.info(`[gamepad] RT fired: btnVal=${rtBtnVal.toFixed(2)} axisVal=${rtAxisRaw.toFixed(2)}`);
         } else if (!rtActive && rtWasPressed) {
           buttonStates.current.set(rtKey, { pressed: false, firstPressAt: 0, lastRepeatAt: 0 });
         }
 
-        // LT (button 6) = right click
         const ltKey = `${gamepad.index}_lt`;
-        const ltButton = gamepad.buttons[BUTTON.LT];
-        const ltActive = (ltButton?.value ?? 0) > 0.1 || ltButton?.pressed;
+        const ltActive = ltBtnVal > 0.1 || gamepad.buttons[BUTTON.LT]?.pressed || ltAxisRaw > 0.1;
         const ltWasPressed = buttonStates.current.get(ltKey)?.pressed ?? false;
         if (ltActive && !ltWasPressed) {
           buttonStates.current.set(ltKey, { pressed: true, firstPressAt: now, lastRepeatAt: now });
           ltFired = true;
+          logger.info(`[gamepad] LT fired: btnVal=${ltBtnVal.toFixed(2)} axisVal=${ltAxisRaw.toFixed(2)}`);
         } else if (!ltActive && ltWasPressed) {
           buttonStates.current.set(ltKey, { pressed: false, firstPressAt: 0, lastRepeatAt: 0 });
         }
