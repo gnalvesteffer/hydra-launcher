@@ -169,7 +169,7 @@ function createCursorEl(): HTMLElement {
     "box-shadow:0 0 6px 2px rgba(0,0,0,0.6)",
     "transform:translate(-50%,-50%)",
     "transition:opacity 0.15s",
-    "opacity:0",
+    "opacity:1",
     "left:50%",
     "top:50%",
   ].join(";");
@@ -236,7 +236,7 @@ export function useGamepadNavigation() {
       lastInputSource.current = "mouse";
       if (cursorEl.current) cursorEl.current.style.opacity = "0";
     }
-    window.addEventListener("mousemove", onMouseMove);
+
 
     // On first mount check if a gamepad is already connected (e.g. page reload)
     const gamepads = navigator.getGamepads();
@@ -405,13 +405,11 @@ export function useGamepadNavigation() {
         pos.y = Math.max(0, Math.min(window.innerHeight, pos.y + totalRy * CURSOR_SPEED));
         cursorEl.current.style.left = `${pos.x}px`;
         cursorEl.current.style.top  = `${pos.y}px`;
-        cursorEl.current.style.opacity = "1";
+
         dispatchMouseEvent("mousemove", pos.x, pos.y);
       } else if (cursorEl.current) {
         // Keep cursor visible if gamepad was the last input source
-        if (lastInputSource.current !== "gamepad") {
-          cursorEl.current.style.opacity = "0";
-        }
+
       }
 
       // RT = left click
@@ -442,7 +440,7 @@ export function useGamepadNavigation() {
       if (animFrameRef.current !== null) {
         cancelAnimationFrame(animFrameRef.current);
       }
-      window.removeEventListener("mousemove", onMouseMove);
+
       document.documentElement.style.overflow = prevHtmlOverflow;
       cursorEl.current?.remove();
       cursorEl.current = null;
