@@ -8,9 +8,10 @@ export interface CheckboxFieldProps
     HTMLInputElement
   > {
   label: string | React.ReactNode;
+  hint?: string;
 }
 
-export function CheckboxField({ label, ...props }: CheckboxFieldProps) {
+export function CheckboxField({ label, hint, ...props }: CheckboxFieldProps) {
   const id = useId();
 
   return (
@@ -30,9 +31,12 @@ export function CheckboxField({ label, ...props }: CheckboxFieldProps) {
           <CheckIcon />
         </span>
       </div>
-      <label htmlFor={id} className="checkbox-field__label">
-        {label}
-      </label>
+      <div className="checkbox-field__label-group">
+        <label htmlFor={id} className="checkbox-field__label">
+          {label}
+        </label>
+        {hint && <p className="checkbox-field__hint">{hint}</p>}
+      </div>
     </div>
   );
 }

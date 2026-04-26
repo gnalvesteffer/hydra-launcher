@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Sidebar, BottomPanel, Header, Toast } from "@renderer/components";
+import { Sidebar, BottomPanel, Header, Toast, GamepadHintBar } from "@renderer/components";
 import { WorkWonders } from "workwonders-sdk";
 import {
   useAppDispatch,
@@ -424,6 +424,7 @@ export function App() {
       </main>
 
       <BottomPanel />
+      <GamepadHintBar />
     </>
   );
 }

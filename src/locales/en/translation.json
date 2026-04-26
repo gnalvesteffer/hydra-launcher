@@ -1118,5 +1118,11 @@
     "failed_to_dismiss": "Failed to dismiss notification",
     "friend_request_accepted": "Friend request accepted",
     "friend_request_refused": "Friend request refused"
+  },
+  "gamepad_hint_bar": {
+    "confirm": "Confirm",
+    "back": "Back",
+    "change_section": "Change section",
+    "search": "Search"
   }
 }

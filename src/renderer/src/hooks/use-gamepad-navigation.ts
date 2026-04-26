@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { logger } from "@renderer/logger";
 
 // Standard gamepad button indices (Xbox / Steam Deck layout)
 const BUTTON = {
@@ -121,7 +122,7 @@ export function useGamepadNavigation() {
     const handleGamepadConnected = (e: GamepadEvent) => {
       gamepadNavigationActive.current = true;
       document.body.setAttribute("data-gamepad", "true");
-      console.info(`[gamepad] connected: ${e.gamepad.id}`);
+      logger.info(`[gamepad] connected: ${e.gamepad.id}`);
     };
 
     const handleGamepadDisconnected = () => {

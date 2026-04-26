@@ -152,14 +152,3 @@ body[data-gamepad="true"] *:focus:not(:focus-visible) {
   outline: 3px solid #c6a0f6 !important;
 }
 
-/* Gamepad hint overlay — small controller icon shown when connected */
-body[data-gamepad="true"]::after {
-  content: "🎮";
-  position: fixed;
-  bottom: 12px;
-  right: 12px;
-  font-size: 18px;
-  opacity: 0.5;
-  pointer-events: none;
-  z-index: 9999;
-}
