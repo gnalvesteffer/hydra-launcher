@@ -160,7 +160,7 @@ function createCursorEl(): HTMLElement {
   el.id = "gamepad-cursor";
   el.style.cssText = [
     "position:fixed",
-    "z-index:99999",
+    "z-index:2147483647",
     "pointer-events:none",
     "width:20px",
     "height:20px",
