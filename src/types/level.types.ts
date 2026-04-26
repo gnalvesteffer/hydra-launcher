@@ -138,6 +138,7 @@ export interface UserPreferences {
   extractFilesByDefault?: boolean;
   enableSteamAchievements?: boolean;
   autoplayGameTrailers?: boolean;
+  hideTorrentDownloader?: boolean;
   hideToTrayOnGameStart?: boolean;
   enableNewDownloadOptionsBadges?: boolean;
   createStartMenuShortcut?: boolean;

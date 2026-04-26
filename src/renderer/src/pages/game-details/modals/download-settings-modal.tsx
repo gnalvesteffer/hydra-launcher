@@ -370,6 +370,7 @@ export function DownloadSettingsModal({
     return allDownloaders
       .filter((downloader) => {
         if (downloader === Downloader.Hydra) return false; // Temporarily comment out Nimbus
+        if (downloader === Downloader.Torrent && userPreferences?.hideTorrentDownloader) return false;
         if (
           downloader === Downloader.Premiumize &&
           !isFeatureEnabled(Feature.Premiumize)
@@ -424,6 +425,7 @@ export function DownloadSettingsModal({
     userPreferences?.premiumizeApiToken,
     userPreferences?.allDebridApiToken,
     userPreferences?.torBoxApiToken,
+    userPreferences?.hideTorrentDownloader,
     isFeatureEnabled,
     Feature,
   ]);

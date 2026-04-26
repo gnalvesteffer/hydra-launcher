@@ -723,6 +723,8 @@
     "launch_hydra_in_big_picture": "Launch Hydra in Big Picture mode (experimental)",
     "disable_nsfw_alert": "Disable NSFW alert",
     "seed_after_download_complete": "Seed after download complete",
+    "hide_torrent_downloader": "Hide BitTorrent downloader",
+    "hide_torrent_downloader_hint": "Use a debrid service (TorBox, Real-Debrid, etc.) for improved privacy instead of direct torrent downloads",
     "show_hidden_achievement_description": "Show hidden achievement descriptions before unlocking them",
     "account": "Account",
     "hydra_cloud": "Hydra Cloud",

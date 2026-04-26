@@ -48,6 +48,7 @@ export function SettingsContextDownloads() {
     showDownloadSpeedInMegabytes: false,
     extractFilesByDefault: true,
     createStartMenuShortcut: true,
+    hideTorrentDownloader: false,
     maxDownloadSpeedMegabytes: "",
   });
 
@@ -61,6 +62,7 @@ export function SettingsContextDownloads() {
         userPreferences.showDownloadSpeedInMegabytes ?? false,
       extractFilesByDefault: userPreferences.extractFilesByDefault ?? true,
       createStartMenuShortcut: userPreferences.createStartMenuShortcut ?? true,
+      hideTorrentDownloader: userPreferences.hideTorrentDownloader ?? false,
       maxDownloadSpeedMegabytes:
         typeof userPreferences.maxDownloadSpeedBytesPerSecond === "number" &&
         userPreferences.maxDownloadSpeedBytesPerSecond > 0
@@ -162,6 +164,17 @@ export function SettingsContextDownloads() {
           onChange={() =>
             handleChange({
               seedAfterDownloadComplete: !form.seedAfterDownloadComplete,
+            })
+          }
+        />
+
+        <CheckboxField
+          label={t("hide_torrent_downloader")}
+          checked={form.hideTorrentDownloader}
+          hint={t("hide_torrent_downloader_hint")}
+          onChange={() =>
+            handleChange({
+              hideTorrentDownloader: !form.hideTorrentDownloader,
             })
           }
         />
