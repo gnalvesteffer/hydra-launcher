@@ -49,7 +49,7 @@ function getOrCreateDebugOverlay(): HTMLElement {
       "white-space:pre",
       "line-height:1.5",
     ].join(";");
-    document.body.appendChild(el);
+    document.documentElement.appendChild(el);
   }
   return el;
 }
@@ -224,7 +224,7 @@ export function useGamepadNavigation() {
 
     // Create virtual cursor element
     const cursor = createCursorEl();
-    document.body.appendChild(cursor);
+    document.documentElement.appendChild(cursor);
     cursorEl.current = cursor;
 
     // Hide virtual cursor when real mouse is used
