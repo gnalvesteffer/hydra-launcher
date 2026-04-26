@@ -838,7 +838,14 @@
     "downloads": "Downloads",
     "create_shortcuts_on_download": "Create desktop and Start Menu shortcuts when a game finishes downloading",
     "default_proton_version": "Default Proton version",
-    "default_proton_version_description": "Select the Proton version used by Auto mode when a game has no custom override"
+    "default_proton_version_description": "Select the Proton version used by Auto mode when a game has no custom override",
+    "browse_library_sources": "Browse Library",
+    "browse_library_sources_description": "Browse and add sources from the Hydra Library community catalog.",
+    "loading_library_sources": "Loading sources...",
+    "failed_fetch_library_sources": "Failed to fetch library sources. Please check your connection.",
+    "already_added": "Added",
+    "search_sources": "Search sources...",
+    "no_sources_found": "No sources found."
   },
   "notifications": {
     "download_complete": "Download complete",

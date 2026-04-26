@@ -10,12 +10,14 @@ import { useTranslation } from "react-i18next";
 
 import type { DownloadSource } from "@types";
 import {
+  BookIcon,
   NoEntryIcon,
   PlusCircleIcon,
   SyncIcon,
   TrashIcon,
 } from "@primer/octicons-react";
 import { AddDownloadSourceModal } from "./add-download-source-modal";
+import { BrowseLibrarySourcesModal } from "./browse-library-sources-modal";
 import { useAppDispatch, useToast } from "@renderer/hooks";
 import { useFormat } from "@renderer/hooks/use-format";
 import { DownloadSourceStatus } from "@shared";
@@ -34,6 +36,7 @@ export function SettingsDownloadSources() {
   ] = useState(false);
   const [showAddDownloadSourceModal, setShowAddDownloadSourceModal] =
     useState(false);
+  const [showBrowseLibraryModal, setShowBrowseLibraryModal] = useState(false);
   const [downloadSources, setDownloadSources] = useState<DownloadSource[]>([]);
   const [isSyncingDownloadSources, setIsSyncingDownloadSources] =
     useState(false);
@@ -191,6 +194,12 @@ export function SettingsDownloadSources() {
         onClose={handleModalClose}
         onAddDownloadSource={handleAddDownloadSource}
       />
+      <BrowseLibrarySourcesModal
+        visible={showBrowseLibraryModal}
+        onClose={() => setShowBrowseLibraryModal(false)}
+        onSourceAdded={handleAddDownloadSource}
+        existingUrls={downloadSources.map((s) => s.url)}
+      />
       <ConfirmationModal
         cancelButtonLabel={t("cancel_button_confirmation_delete_all_sources")}
         confirmButtonLabel={t("confirm_button_confirmation_delete_all_sources")}
@@ -233,6 +242,16 @@ export function SettingsDownloadSources() {
           >
             <TrashIcon />
             {t("button_delete_all_sources")}
+          </Button>
+
+          <Button
+            type="button"
+            theme="outline"
+            onClick={() => setShowBrowseLibraryModal(true)}
+            disabled={isSyncingDownloadSources || isRemovingDownloadSource}
+          >
+            <BookIcon />
+            {t("browse_library_sources")}
           </Button>
 
           <Button
