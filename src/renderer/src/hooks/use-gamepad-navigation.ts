@@ -116,6 +116,22 @@ function scrollActiveContainer(direction: "up" | "down") {
   window.scrollBy({ top: direction === "down" ? 120 : -120, behavior: "smooth" });
 }
 
+function scrollActiveContainerH(amount: number) {
+  let el: HTMLElement | null = document.activeElement as HTMLElement | null;
+  while (el && el !== document.body) {
+    const overflow = window.getComputedStyle(el).overflowX;
+    if (
+      (overflow === "auto" || overflow === "scroll") &&
+      el.scrollWidth > el.clientWidth
+    ) {
+      el.scrollBy({ left: amount, behavior: "smooth" });
+      return;
+    }
+    el = el.parentElement;
+  }
+  window.scrollBy({ left: amount, behavior: "smooth" });
+}
+
 // ── Virtual cursor helpers ──────────────────────────────────────────────────
 
 function createCursorEl(): HTMLElement {
@@ -160,7 +176,6 @@ export function useGamepadNavigation() {
   const gamepadNavigationActive = useRef(false);
   const cursorPos = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
   const cursorEl = useRef<HTMLElement | null>(null);
-  const rtPressed = useRef(false);
 
   useEffect(() => {
     const handleGamepadConnected = (e: GamepadEvent) => {
@@ -212,11 +227,20 @@ export function useGamepadNavigation() {
           moveFocus("backward");
           break;
         case BUTTON.DPAD_RIGHT:
-          // Horizontal movement: also forward in tab order
-          moveFocus("forward");
+          // Navigate to next pane
+          if (isFirstPress) {
+            document.dispatchEvent(
+              new CustomEvent("gamepad:navigate-next", { bubbles: true })
+            );
+          }
           break;
         case BUTTON.DPAD_LEFT:
-          moveFocus("backward");
+          // Navigate to previous pane
+          if (isFirstPress) {
+            document.dispatchEvent(
+              new CustomEvent("gamepad:navigate-prev", { bubbles: true })
+            );
+          }
           break;
         case BUTTON.A:
           if (isFirstPress) pressEnter();
@@ -300,25 +324,36 @@ export function useGamepadNavigation() {
         const rx = gamepad.axes[2] ?? 0;
         const ry = gamepad.axes[3] ?? 0;
 
-        // Scroll with left stick vertical
+        // Left stick vertical → vertical scroll
         if (Math.abs(ly) > STICK_DEAD_ZONE) {
-          const stickKey = `${gamepad.index}_100`; // virtual key for left stick Y
-          const prev = buttonStates.current.get(stickKey);
-          const direction = ly > 0 ? "down" : "up";
-
-          if (!prev?.pressed) {
-            buttonStates.current.set(stickKey, {
-              pressed: true,
-              firstPressAt: now,
-              lastRepeatAt: now,
-            });
-            scrollActiveContainer(direction);
-          } else if (shouldRepeat(prev, now)) {
-            prev.lastRepeatAt = now;
-            scrollActiveContainer(direction);
+          const stickKeyY = `${gamepad.index}_100`;
+          const prevY = buttonStates.current.get(stickKeyY);
+          const directionY = ly > 0 ? "down" : "up";
+          if (!prevY?.pressed) {
+            buttonStates.current.set(stickKeyY, { pressed: true, firstPressAt: now, lastRepeatAt: now });
+            scrollActiveContainer(directionY);
+          } else if (shouldRepeat(prevY, now)) {
+            prevY.lastRepeatAt = now;
+            scrollActiveContainer(directionY);
           }
         } else {
           buttonStates.current.delete(`${gamepad.index}_100`);
+        }
+
+        // Left stick horizontal → horizontal scroll
+        if (Math.abs(lx) > STICK_DEAD_ZONE) {
+          const stickKeyX = `${gamepad.index}_102`;
+          const prevX = buttonStates.current.get(stickKeyX);
+          const scrollAmountX = lx * 120;
+          if (!prevX?.pressed) {
+            buttonStates.current.set(stickKeyX, { pressed: true, firstPressAt: now, lastRepeatAt: now });
+            scrollActiveContainerH(scrollAmountX);
+          } else if (shouldRepeat(prevX, now)) {
+            prevX.lastRepeatAt = now;
+            scrollActiveContainerH(scrollAmountX);
+          }
+        } else {
+          buttonStates.current.delete(`${gamepad.index}_102`);
         }
 
         // Right stick moves virtual cursor
@@ -338,19 +373,19 @@ export function useGamepadNavigation() {
         }
 
         // Right trigger (RT = button 7) clicks at virtual cursor position
+        const rtKey = `${gamepad.index}_rt`;
         const rtButton = gamepad.buttons[BUTTON.RT];
-        if (rtButton?.pressed && !rtPressed.current) {
-          rtPressed.current = true;
+        const rtWasPressed = buttonStates.current.get(rtKey)?.pressed ?? false;
+        if (rtButton?.pressed && !rtWasPressed) {
+          buttonStates.current.set(rtKey, { pressed: true, firstPressAt: now, lastRepeatAt: now });
           const { x, y } = cursorPos.current;
           dispatchMouseEvent("mousedown", x, y);
           dispatchMouseEvent("mouseup",   x, y);
           dispatchMouseEvent("click",     x, y);
-        } else if (!rtButton?.pressed) {
-          rtPressed.current = false;
+        } else if (!rtButton?.pressed && rtWasPressed) {
+          buttonStates.current.set(rtKey, { pressed: false, firstPressAt: 0, lastRepeatAt: 0 });
         }
 
-        // Ignore left stick X (lx) for now
-        void lx;
       }
 
       animFrameRef.current = requestAnimationFrame(pollGamepads);
