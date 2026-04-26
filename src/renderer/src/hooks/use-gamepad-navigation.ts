@@ -420,10 +420,15 @@ export function useGamepadNavigation() {
       // RT = left click
       if (rtFired) {
         const { x, y } = cursorPos.current;
-        dispatchMouseEvent("mousedown", x, y);
-        dispatchMouseEvent("mouseup",   x, y);
-        dispatchMouseEvent("click",     x, y);
-
+        const rtTarget = document.elementFromPoint(x, y) as HTMLElement | null;
+        const isInput = !!rtTarget?.closest("input, textarea, [contenteditable]");
+        // For inputs, only dispatch click — mousedown alone triggers the Steam
+        // keyboard, and click triggers it again, causing two keyboards to open.
+        if (!isInput) {
+          dispatchMouseEvent("mousedown", x, y);
+          dispatchMouseEvent("mouseup",   x, y);
+        }
+        dispatchMouseEvent("click", x, y);
       }
 
       // LT = right click (contextmenu)
