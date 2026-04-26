@@ -281,8 +281,7 @@ export function useGamepadNavigation() {
               });
               logger.info(`[gamepad] button pressed: gp=${gamepad.index} btn=${index}`);
               handleButtonAction(index, true);
-
-          } else if (prev?.pressed) {
+            } else if (prev?.pressed) {
             buttonStates.current.set(key, {
               pressed: false,
               firstPressAt: 0,
