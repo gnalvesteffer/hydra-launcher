@@ -29,6 +29,9 @@ const REPEAT_INTERVAL = 120;
 // Analogue stick dead-zone
 const STICK_DEAD_ZONE = 0.35;
 
+// Virtual cursor speed (pixels per frame at full deflection)
+const CURSOR_SPEED = 18;
+
 type ButtonState = {
   pressed: boolean;
   firstPressAt: number;
@@ -113,10 +116,51 @@ function scrollActiveContainer(direction: "up" | "down") {
   window.scrollBy({ top: direction === "down" ? 120 : -120, behavior: "smooth" });
 }
 
+// ── Virtual cursor helpers ──────────────────────────────────────────────────
+
+function createCursorEl(): HTMLElement {
+  const el = document.createElement("div");
+  el.id = "gamepad-cursor";
+  el.style.cssText = [
+    "position:fixed",
+    "z-index:99999",
+    "pointer-events:none",
+    "width:20px",
+    "height:20px",
+    "border-radius:50%",
+    "background:rgba(255,255,255,0.85)",
+    "box-shadow:0 0 6px 2px rgba(0,0,0,0.6)",
+    "transform:translate(-50%,-50%)",
+    "transition:opacity 0.15s",
+    "opacity:0",
+    "left:50%",
+    "top:50%",
+  ].join(";");
+  return el;
+}
+
+function dispatchMouseEvent(type: string, x: number, y: number) {
+  const target = document.elementFromPoint(x, y) as HTMLElement | null;
+  if (!target) return;
+  target.dispatchEvent(
+    new MouseEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      clientX: x,
+      clientY: y,
+      screenX: x,
+      screenY: y,
+    })
+  );
+}
+
 export function useGamepadNavigation() {
   const buttonStates = useRef<Map<string, ButtonState>>(new Map());
   const animFrameRef = useRef<number | null>(null);
   const gamepadNavigationActive = useRef(false);
+  const cursorPos = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  const cursorEl = useRef<HTMLElement | null>(null);
+  const rtPressed = useRef(false);
 
   useEffect(() => {
     const handleGamepadConnected = (e: GamepadEvent) => {
@@ -140,6 +184,11 @@ export function useGamepadNavigation() {
 
     window.addEventListener("gamepadconnected", handleGamepadConnected);
     window.addEventListener("gamepaddisconnected", handleGamepadDisconnected);
+
+    // Create virtual cursor element
+    const cursor = createCursorEl();
+    document.body.appendChild(cursor);
+    cursorEl.current = cursor;
 
     // On first mount check if a gamepad is already connected (e.g. page reload)
     const gamepads = navigator.getGamepads();
@@ -247,7 +296,8 @@ export function useGamepadNavigation() {
         const lx = gamepad.axes[0] ?? 0;
         const ly = gamepad.axes[1] ?? 0;
 
-        // Right stick for focus navigation (axes 2=RX, 3=RY)
+        // Right stick axes: 2=RX, 3=RY — used for virtual cursor
+        const rx = gamepad.axes[2] ?? 0;
         const ry = gamepad.axes[3] ?? 0;
 
         // Scroll with left stick vertical
@@ -268,31 +318,38 @@ export function useGamepadNavigation() {
             scrollActiveContainer(direction);
           }
         } else {
-          buttonStates.current.delete(100);
+          buttonStates.current.delete(`${gamepad.index}_100`);
         }
 
-        // Focus navigation with right stick vertical
-        if (Math.abs(ry) > STICK_DEAD_ZONE) {
-          const stickKey = `${gamepad.index}_101`;
-          const prev = buttonStates.current.get(stickKey);
-          const direction = ry > 0 ? "forward" : "backward";
-
-          if (!prev?.pressed) {
-            buttonStates.current.set(stickKey, {
-              pressed: true,
-              firstPressAt: now,
-              lastRepeatAt: now,
-            });
-            moveFocus(direction);
-          } else if (shouldRepeat(prev, now)) {
-            prev.lastRepeatAt = now;
-            moveFocus(direction);
-          }
-        } else {
-          buttonStates.current.delete(101);
+        // Right stick moves virtual cursor
+        const cursorActive = Math.abs(rx) > STICK_DEAD_ZONE || Math.abs(ry) > STICK_DEAD_ZONE;
+        if (cursorActive && cursorEl.current) {
+          const pos = cursorPos.current;
+          pos.x = Math.max(0, Math.min(window.innerWidth,  pos.x + rx * CURSOR_SPEED));
+          pos.y = Math.max(0, Math.min(window.innerHeight, pos.y + ry * CURSOR_SPEED));
+          cursorEl.current.style.left = `${pos.x}px`;
+          cursorEl.current.style.top  = `${pos.y}px`;
+          cursorEl.current.style.opacity = "1";
+          // Emit mousemove so hover states track the cursor
+          dispatchMouseEvent("mousemove", pos.x, pos.y);
+        } else if (cursorEl.current && cursorEl.current.style.opacity !== "0") {
+          // Fade out cursor when stick is released
+          cursorEl.current.style.opacity = "0";
         }
 
-        // Ignore left stick X (lx) for now — could be used for sidebar later
+        // Right trigger (RT = button 7) clicks at virtual cursor position
+        const rtButton = gamepad.buttons[BUTTON.RT];
+        if (rtButton?.pressed && !rtPressed.current) {
+          rtPressed.current = true;
+          const { x, y } = cursorPos.current;
+          dispatchMouseEvent("mousedown", x, y);
+          dispatchMouseEvent("mouseup",   x, y);
+          dispatchMouseEvent("click",     x, y);
+        } else if (!rtButton?.pressed) {
+          rtPressed.current = false;
+        }
+
+        // Ignore left stick X (lx) for now
         void lx;
       }
 
@@ -310,6 +367,8 @@ export function useGamepadNavigation() {
       if (animFrameRef.current !== null) {
         cancelAnimationFrame(animFrameRef.current);
       }
+      cursorEl.current?.remove();
+      cursorEl.current = null;
     };
   }, []);
 }
