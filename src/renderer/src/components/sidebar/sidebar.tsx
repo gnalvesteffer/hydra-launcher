@@ -208,6 +208,32 @@ export function Sidebar() {
     loadDeckyPluginInfo();
   }, []);
 
+  // LB / RB cycle through sidebar routes (dispatched by useGamepadNavigation)
+  useEffect(() => {
+    const routePaths = routes.map((r) => r.path);
+
+    const handleNavigateNext = () => {
+      const current = routePaths.indexOf(location.pathname);
+      const next = routePaths[(current + 1) % routePaths.length];
+      navigate(next);
+    };
+
+    const handleNavigatePrev = () => {
+      const current = routePaths.indexOf(location.pathname);
+      const prev =
+        routePaths[(current - 1 + routePaths.length) % routePaths.length];
+      navigate(prev);
+    };
+
+    document.addEventListener("gamepad:navigate-next", handleNavigateNext);
+    document.addEventListener("gamepad:navigate-prev", handleNavigatePrev);
+
+    return () => {
+      document.removeEventListener("gamepad:navigate-next", handleNavigateNext);
+      document.removeEventListener("gamepad:navigate-prev", handleNavigatePrev);
+    };
+  }, [location.pathname, navigate]);
+
   useEffect(() => {
     if (!userDetails || hasLoadedCollections) return;
     void loadCollections();

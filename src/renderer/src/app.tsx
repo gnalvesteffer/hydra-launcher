@@ -8,6 +8,7 @@ import {
   useLibrary,
   useToast,
   useUserDetails,
+  useGamepadNavigation,
 } from "@renderer/hooks";
 import { useDownloadOptionsListener } from "@renderer/hooks/use-download-options-listener";
 
@@ -54,6 +55,9 @@ export function App() {
 
   // Listen for new download options updates
   useDownloadOptionsListener();
+
+  // Enable controller navigation for Steam Deck
+  useGamepadNavigation();
 
   const { t } = useTranslation("app");
 
