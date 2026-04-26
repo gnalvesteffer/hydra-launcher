@@ -1,4 +1,4 @@
 #!/bin/bash
-export DISPLAY=:0
-cd /home/deck/dev/hydra
-exec npx electron-vite dev --noSandbox
+export WAYLAND_DISPLAY=wayland-0
+export XDG_RUNTIME_DIR=/run/user/1000
+exec /home/deck/dev/hydra/dist/hydralauncher-3.9.5.AppImage --no-sandbox
