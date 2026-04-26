@@ -29,6 +29,45 @@ const REPEAT_INTERVAL = 120;
 // Analogue stick dead-zone
 const STICK_DEAD_ZONE = 0.35;
 
+// ---------- DEBUG OVERLAY ----------
+function getOrCreateDebugOverlay(): HTMLElement {
+  let el = document.getElementById("__gamepad_debug__");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "__gamepad_debug__";
+    el.style.cssText = [
+      "position:fixed",
+      "bottom:10px",
+      "left:10px",
+      "background:rgba(0,0,0,0.85)",
+      "color:#0f0",
+      "font:13px monospace",
+      "padding:8px 12px",
+      "border-radius:6px",
+      "z-index:999999",
+      "pointer-events:none",
+      "white-space:pre",
+      "line-height:1.5",
+    ].join(";");
+    document.body.appendChild(el);
+  }
+  return el;
+}
+let _dbgLastBtn = "none";
+let _dbgVisible = true;
+function updateDebugOverlay(gamepad: Gamepad) {
+  const el = getOrCreateDebugOverlay();
+  el.style.display = _dbgVisible ? "block" : "none";
+  if (!_dbgVisible) return;
+  const axes = Array.from(gamepad.axes).map((v, i) => `a${i}:${v.toFixed(2)}`).join("  ");
+  const btns = Array.from(gamepad.buttons)
+    .map((b, i) => (b.pressed || b.value > 0.05 ? `[${i}:${b.value.toFixed(2)}]` : null))
+    .filter(Boolean)
+    .join(" ");
+  el.textContent = `GP${gamepad.index} map=${gamepad.mapping}\nAxes: ${axes}\nActive btns: ${btns || "none"}\nLast pressed: ${_dbgLastBtn}`;
+}
+// ---------- END DEBUG OVERLAY ----------
+
 // Virtual cursor speed (pixels per frame at full deflection)
 const CURSOR_SPEED = 18;
 
@@ -212,6 +251,9 @@ export function useGamepadNavigation() {
         case BUTTON.Y:
           if (isFirstPress) focusSearch();
           break;
+        case 6:
+          if (isFirstPress) _dbgVisible = !_dbgVisible;
+          break;
         case BUTTON.LB:
           if (isFirstPress) {
             // Navigate to previous sidebar route via keyboard shortcut simulation
@@ -262,6 +304,7 @@ export function useGamepadNavigation() {
                 lastRepeatAt: now,
               });
               logger.info(`[gamepad] button pressed: gp=${gamepad.index} btn=${index}`);
+              _dbgLastBtn = `btn${index} (gp${gamepad.index})`;
               handleButtonAction(index, true);
             }
           } else if (prev?.pressed) {
@@ -280,9 +323,10 @@ export function useGamepadNavigation() {
         // Right stick axes depend on mapping:
         //   "standard" (Xbox/DS4 in browser standard mode): RX=axes[2], RY=axes[3]
         //   non-standard (Steam Deck, many Linux HID): triggers on axes[2]/[3], RX=axes[4], RY=axes[5]
+        // axes[2]=LT, axes[5]=RT (triggers), so right stick is always axes[3]=RX, axes[4]=RY
         const isStandard = gamepad.mapping === "standard";
-        const rx = isStandard ? (gamepad.axes[2] ?? 0) : (gamepad.axes[3] ?? 0);
-        const ry = isStandard ? (gamepad.axes[3] ?? 0) : (gamepad.axes[4] ?? 0);
+        const rx = gamepad.axes[3] ?? 0;
+        const ry = gamepad.axes[4] ?? 0;
 
         // DEBUG: log all axes every ~120 frames so we can identify the right-stick axis indices
         if (Math.floor(now / 2000) !== Math.floor((now - 16) / 2000)) {
@@ -308,46 +352,31 @@ export function useGamepadNavigation() {
         if (Math.abs(rx) > STICK_DEAD_ZONE) totalRx += rx;
         if (Math.abs(ry) > STICK_DEAD_ZONE) totalRy += ry;
 
-        // RT = left click, LT = right click
-        // Triggers may appear as buttons (standard) or axes (Xbox Linux non-standard)
-        // standard: buttons[7]=RT, buttons[6]=LT
-        // non-standard axes: axes[5]=RT, axes[4]=LT (or axes[2]/axes[3] on some)
-        const rtBtnVal = (gamepad.buttons[BUTTON.RT]?.value ?? 0);
-        const ltBtnVal = (gamepad.buttons[BUTTON.LT]?.value ?? 0);
-        // Also check axes that commonly carry trigger data on Linux
-        const axisCount = gamepad.axes.length;
-        const rtAxisVal = isStandard
-          ? 0  // standard mapping uses buttons only
-          : Math.max(
-              (gamepad.axes[axisCount - 1] ?? 0),  // last axis (often RT)
-              (gamepad.axes[axisCount >= 2 ? axisCount - 2 : 0] ?? 0)  // second-last (often LT)
-            );
-        // Use dedicated per-axis keys for axis-based triggers
-        const rtAxisRaw = isStandard ? 0 : (gamepad.axes[axisCount - 1] ?? 0);
-        const ltAxisRaw = isStandard ? 0 : (gamepad.axes[axisCount >= 2 ? axisCount - 2 : 0] ?? 0);
-        void rtAxisVal;
+        // RT = left click  (axes[5]: idle=-1, pressed=+1, threshold > 0)
+        // LT = right click (axes[2]: idle=-1, pressed=+1, threshold > 0)
+        const rtAxisVal = gamepad.axes[5] ?? -1;
+        const ltAxisVal = gamepad.axes[2] ?? -1;
+        const rtActive = rtAxisVal > 0;
+        const ltActive = ltAxisVal > 0;
 
         const rtKey = `${gamepad.index}_rt`;
-        const rtActive = rtBtnVal > 0.1 || gamepad.buttons[BUTTON.RT]?.pressed || rtAxisRaw > 0.1;
         const rtWasPressed = buttonStates.current.get(rtKey)?.pressed ?? false;
         if (rtActive && !rtWasPressed) {
           buttonStates.current.set(rtKey, { pressed: true, firstPressAt: now, lastRepeatAt: now });
           rtFired = true;
-          logger.info(`[gamepad] RT fired: btnVal=${rtBtnVal.toFixed(2)} axisVal=${rtAxisRaw.toFixed(2)}`);
         } else if (!rtActive && rtWasPressed) {
           buttonStates.current.set(rtKey, { pressed: false, firstPressAt: 0, lastRepeatAt: 0 });
         }
 
         const ltKey = `${gamepad.index}_lt`;
-        const ltActive = ltBtnVal > 0.1 || gamepad.buttons[BUTTON.LT]?.pressed || ltAxisRaw > 0.1;
         const ltWasPressed = buttonStates.current.get(ltKey)?.pressed ?? false;
         if (ltActive && !ltWasPressed) {
           buttonStates.current.set(ltKey, { pressed: true, firstPressAt: now, lastRepeatAt: now });
           ltFired = true;
-          logger.info(`[gamepad] LT fired: btnVal=${ltBtnVal.toFixed(2)} axisVal=${ltAxisRaw.toFixed(2)}`);
         } else if (!ltActive && ltWasPressed) {
           buttonStates.current.set(ltKey, { pressed: false, firstPressAt: 0, lastRepeatAt: 0 });
         }
+        updateDebugOverlay(gamepad);
       }
 
       // Apply accumulated right-stick cursor movement from ALL controllers
