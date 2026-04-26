@@ -322,13 +322,8 @@ export class PythonRPC {
       );
 
       if (!fs.existsSync(binaryPath)) {
-        dialog.showErrorBox(
-          "Fatal",
-          "Hydra Python Instance binary not found. Please check if it has been removed by Windows Defender."
-        );
-
-        app.quit();
-        throw new Error(`Hydra Python RPC binary not found at ${binaryPath}`);
+        pythonRpcLogger.warn(`Hydra Python RPC binary not found at ${binaryPath}, download features will be unavailable`);
+        return;
       }
 
       const childProcess = cp.spawn(binaryPath, commonArgs, {

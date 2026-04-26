@@ -37,28 +37,34 @@ export class NativeAddon {
     return path.join(app.getAppPath(), "hydra-native", "hydra-native.node");
   }
 
-  private static load() {
+  private static load(): HydraNativeModule | null {
     if (this.nativeModule) return this.nativeModule;
 
     const addonPath = this.resolveAddonPath();
     const addonDir = path.dirname(addonPath);
 
     if (!fs.existsSync(addonPath)) {
-      throw new Error(`Hydra native addon not found at ${addonPath}`);
+      logger.warn(`Hydra native addon not found at ${addonPath}, skipping`);
+      return null;
     }
 
-    if (process.platform === "linux") {
-      process.env.LD_LIBRARY_PATH = process.env.LD_LIBRARY_PATH
-        ? `${addonDir}:${process.env.LD_LIBRARY_PATH}`
-        : addonDir;
+    try {
+      if (process.platform === "linux") {
+        process.env.LD_LIBRARY_PATH = process.env.LD_LIBRARY_PATH
+          ? `${addonDir}:${process.env.LD_LIBRARY_PATH}`
+          : addonDir;
+      }
+
+      const require = createRequire(import.meta.url);
+      const nativeModule = require(addonPath) as HydraNativeModule;
+
+      this.nativeModule = nativeModule;
+
+      return nativeModule;
+    } catch (error) {
+      logger.warn("Failed to load Hydra native addon, skipping", error);
+      return null;
     }
-
-    const require = createRequire(import.meta.url);
-    const nativeModule = require(addonPath) as HydraNativeModule;
-
-    this.nativeModule = nativeModule;
-
-    return nativeModule;
   }
 
   public static processProfileImage(
@@ -66,7 +72,9 @@ export class NativeAddon {
     targetExtension = "webp"
   ) {
     try {
-      const response = this.load().processProfileImage(
+      const mod = this.load();
+      if (!mod) return null;
+      const response = mod.processProfileImage(
         imagePath,
         targetExtension
       );
