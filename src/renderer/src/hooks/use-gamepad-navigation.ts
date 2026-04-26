@@ -277,6 +277,11 @@ export function useGamepadNavigation() {
     function pollGamepads() {
       const now = performance.now();
 
+      // Accumulators reset each frame — aggregates input from all controllers
+      let totalRx = 0;
+      let totalRy = 0;
+      let rtFired = false;
+
       for (const gamepad of navigator.getGamepads()) {
         if (!gamepad) continue;
 
@@ -356,36 +361,41 @@ export function useGamepadNavigation() {
           buttonStates.current.delete(`${gamepad.index}_102`);
         }
 
-        // Right stick moves virtual cursor
-        const cursorActive = Math.abs(rx) > STICK_DEAD_ZONE || Math.abs(ry) > STICK_DEAD_ZONE;
-        if (cursorActive && cursorEl.current) {
-          const pos = cursorPos.current;
-          pos.x = Math.max(0, Math.min(window.innerWidth,  pos.x + rx * CURSOR_SPEED));
-          pos.y = Math.max(0, Math.min(window.innerHeight, pos.y + ry * CURSOR_SPEED));
-          cursorEl.current.style.left = `${pos.x}px`;
-          cursorEl.current.style.top  = `${pos.y}px`;
-          cursorEl.current.style.opacity = "1";
-          // Emit mousemove so hover states track the cursor
-          dispatchMouseEvent("mousemove", pos.x, pos.y);
-        } else if (cursorEl.current && cursorEl.current.style.opacity !== "0") {
-          // Fade out cursor when stick is released
-          cursorEl.current.style.opacity = "0";
-        }
+        // Accumulate right stick delta — applied after all controllers processed
+        if (Math.abs(rx) > STICK_DEAD_ZONE) totalRx += rx;
+        if (Math.abs(ry) > STICK_DEAD_ZONE) totalRy += ry;
 
-        // Right trigger (RT = button 7) clicks at virtual cursor position
+        // Right trigger (RT = button 7) — mark fired, applied after loop
         const rtKey = `${gamepad.index}_rt`;
         const rtButton = gamepad.buttons[BUTTON.RT];
         const rtWasPressed = buttonStates.current.get(rtKey)?.pressed ?? false;
         if (rtButton?.pressed && !rtWasPressed) {
           buttonStates.current.set(rtKey, { pressed: true, firstPressAt: now, lastRepeatAt: now });
-          const { x, y } = cursorPos.current;
-          dispatchMouseEvent("mousedown", x, y);
-          dispatchMouseEvent("mouseup",   x, y);
-          dispatchMouseEvent("click",     x, y);
+          rtFired = true;
         } else if (!rtButton?.pressed && rtWasPressed) {
           buttonStates.current.set(rtKey, { pressed: false, firstPressAt: 0, lastRepeatAt: 0 });
         }
+      }
 
+      // Apply accumulated right-stick cursor movement from ALL controllers
+      if ((totalRx !== 0 || totalRy !== 0) && cursorEl.current) {
+        const pos = cursorPos.current;
+        pos.x = Math.max(0, Math.min(window.innerWidth,  pos.x + totalRx * CURSOR_SPEED));
+        pos.y = Math.max(0, Math.min(window.innerHeight, pos.y + totalRy * CURSOR_SPEED));
+        cursorEl.current.style.left = `${pos.x}px`;
+        cursorEl.current.style.top  = `${pos.y}px`;
+        cursorEl.current.style.opacity = "1";
+        dispatchMouseEvent("mousemove", pos.x, pos.y);
+      } else if (cursorEl.current) {
+        cursorEl.current.style.opacity = "0";
+      }
+
+      // Fire RT click if any controller triggered it this frame
+      if (rtFired) {
+        const { x, y } = cursorPos.current;
+        dispatchMouseEvent("mousedown", x, y);
+        dispatchMouseEvent("mouseup",   x, y);
+        dispatchMouseEvent("click",     x, y);
       }
 
       animFrameRef.current = requestAnimationFrame(pollGamepads);
