@@ -222,6 +222,10 @@ export function useGamepadNavigation() {
     window.addEventListener("gamepadconnected", handleGamepadConnected);
     window.addEventListener("gamepaddisconnected", handleGamepadDisconnected);
 
+    // Override html overflow:hidden so position:fixed cursor isn't clipped
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'visible';
+
     // Create virtual cursor element
     const cursor = createCursorEl();
     document.documentElement.appendChild(cursor);
@@ -385,15 +389,14 @@ export function useGamepadNavigation() {
         } else if (!ltActive && ltWasPressed) {
           buttonStates.current.set(ltKey, { pressed: false, firstPressAt: 0, lastRepeatAt: 0 });
         }
-        // Mark gamepad active this frame if any input is non-idle
+        // Mark gamepad active this frame if any button pressed or trigger pulled
         const anyBtn = gamepad.buttons.some(b => b.pressed || b.value > 0.05);
-        const anyAxis = Array.from(gamepad.axes).some(v => Math.abs(v + 1) > 0.1 && Math.abs(v) > 0.05); // exclude idle=-1 triggers
-        if (anyBtn || anyAxis || Math.abs(totalRx) > 0 || Math.abs(totalRy) > 0) anyGamepadActive = true;
+        if (anyBtn || rtActive || ltActive) anyGamepadActive = true;
         updateDebugOverlay(gamepad);
       }
 
-      // Track last input source
-      if (anyGamepadActive) lastInputSource.current = "gamepad";
+      // Track last input source — also consider stick movement
+      if (anyGamepadActive || totalRx !== 0 || totalRy !== 0) lastInputSource.current = "gamepad";
 
       // Apply accumulated right-stick cursor movement from ALL controllers
       if ((totalRx !== 0 || totalRy !== 0) && cursorEl.current) {
@@ -440,6 +443,7 @@ export function useGamepadNavigation() {
         cancelAnimationFrame(animFrameRef.current);
       }
       window.removeEventListener("mousemove", onMouseMove);
+      document.documentElement.style.overflow = prevHtmlOverflow;
       cursorEl.current?.remove();
       cursorEl.current = null;
     };
