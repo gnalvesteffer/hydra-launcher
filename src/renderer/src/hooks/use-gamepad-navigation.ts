@@ -197,6 +197,7 @@ export function useGamepadNavigation() {
   const gamepadNavigationActive = useRef(false);
   const cursorPos = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
   const cursorEl = useRef<HTMLElement | null>(null);
+  const lastInputSource = useRef<"gamepad" | "mouse">("mouse");
 
   useEffect(() => {
     const handleGamepadConnected = (e: GamepadEvent) => {
@@ -225,6 +226,13 @@ export function useGamepadNavigation() {
     const cursor = createCursorEl();
     document.body.appendChild(cursor);
     cursorEl.current = cursor;
+
+    // Hide virtual cursor when real mouse is used
+    function onMouseMove() {
+      lastInputSource.current = "mouse";
+      if (cursorEl.current) cursorEl.current.style.opacity = "0";
+    }
+    window.addEventListener("mousemove", onMouseMove);
 
     // On first mount check if a gamepad is already connected (e.g. page reload)
     const gamepads = navigator.getGamepads();
@@ -281,6 +289,7 @@ export function useGamepadNavigation() {
       const now = performance.now();
 
       // Accumulators reset each frame — aggregates input from all controllers
+      let anyGamepadActive = false;
       let totalRx = 0;
       let totalRy = 0;
       let rtFired = false;
@@ -376,8 +385,15 @@ export function useGamepadNavigation() {
         } else if (!ltActive && ltWasPressed) {
           buttonStates.current.set(ltKey, { pressed: false, firstPressAt: 0, lastRepeatAt: 0 });
         }
+        // Mark gamepad active this frame if any input is non-idle
+        const anyBtn = gamepad.buttons.some(b => b.pressed || b.value > 0.05);
+        const anyAxis = Array.from(gamepad.axes).some(v => Math.abs(v + 1) > 0.1 && Math.abs(v) > 0.05); // exclude idle=-1 triggers
+        if (anyBtn || anyAxis || Math.abs(totalRx) > 0 || Math.abs(totalRy) > 0) anyGamepadActive = true;
         updateDebugOverlay(gamepad);
       }
+
+      // Track last input source
+      if (anyGamepadActive) lastInputSource.current = "gamepad";
 
       // Apply accumulated right-stick cursor movement from ALL controllers
       if ((totalRx !== 0 || totalRy !== 0) && cursorEl.current) {
@@ -389,7 +405,10 @@ export function useGamepadNavigation() {
         cursorEl.current.style.opacity = "1";
         dispatchMouseEvent("mousemove", pos.x, pos.y);
       } else if (cursorEl.current) {
-        cursorEl.current.style.opacity = "0";
+        // Keep cursor visible if gamepad was the last input source
+        if (lastInputSource.current !== "gamepad") {
+          cursorEl.current.style.opacity = "0";
+        }
       }
 
       // RT = left click
@@ -420,6 +439,7 @@ export function useGamepadNavigation() {
       if (animFrameRef.current !== null) {
         cancelAnimationFrame(animFrameRef.current);
       }
+      window.removeEventListener("mousemove", onMouseMove);
       cursorEl.current?.remove();
       cursorEl.current = null;
     };
