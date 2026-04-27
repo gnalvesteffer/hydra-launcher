@@ -135,7 +135,15 @@ function focusSearch() {
   const search = document.querySelector<HTMLElement>(
     'input[type="search"], input[placeholder*="earch"], input[placeholder*="ilter"]'
   );
-  if (search && document.activeElement !== search) search.focus();
+  if (search && document.activeElement !== search) {
+    // Dispatch click so Steam virtual keyboard opens (programmatic .focus() won't trigger it)
+    const rect = search.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    dispatchMouseEvent("mousedown", cx, cy, search);
+    dispatchMouseEvent("mouseup",   cx, cy, search);
+    dispatchMouseEvent("click",     cx, cy, search);
+  }
 }
 
 function scrollFromPoint(x: number, y: number, deltaX: number, deltaY: number) {
@@ -177,8 +185,8 @@ function createCursorEl(): HTMLElement {
   return el;
 }
 
-function dispatchMouseEvent(type: string, x: number, y: number) {
-  const target = document.elementFromPoint(x, y) as HTMLElement | null;
+function dispatchMouseEvent(type: string, x: number, y: number, overrideTarget?: HTMLElement | null) {
+  const target = overrideTarget ?? (document.elementFromPoint(x, y) as HTMLElement | null);
   if (!target) return;
   target.dispatchEvent(
     new MouseEvent(type, {
@@ -262,7 +270,7 @@ export function useGamepadNavigation() {
           if (isFirstPress) pressEscape();
           break;
         case BUTTON.Y:
-          if (isFirstPress) focusSearch();
+          // Y button intentionally unbound
           break;
         case 6:
           if (isFirstPress) _dbgVisible = !_dbgVisible;
@@ -426,11 +434,17 @@ export function useGamepadNavigation() {
         const descendantInput = rtTarget?.querySelector("input, textarea, [contenteditable]") as HTMLElement | null;
         const inputEl = ancestorInput ?? descendantInput;
         if (inputEl) {
-          // Only focus if not already active — re-focusing an active input
-          // can trigger a second Steam virtual keyboard instance.
-          if (document.activeElement !== inputEl) {
-            inputEl.focus();
-          }
+          // Dispatch click events directly on the input element.
+          // Using .focus() alone is programmatic and won't open Steam's virtual
+          // keyboard — Steam only reacts to user-initiated click events.
+          // Clicking the <input> directly (not a wrapper button) is safe:
+          // the input has no onClick handler so no double-focus risk.
+          const rect = inputEl.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          dispatchMouseEvent("mousedown", cx, cy, inputEl);
+          dispatchMouseEvent("mouseup",   cx, cy, inputEl);
+          dispatchMouseEvent("click",     cx, cy, inputEl);
         } else {
           dispatchMouseEvent("mousedown", x, y);
           dispatchMouseEvent("mouseup",   x, y);
