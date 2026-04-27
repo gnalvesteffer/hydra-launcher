@@ -233,10 +233,13 @@ export class Umu {
     fs.mkdirSync(path.dirname(umuLogPath), { recursive: true });
     ensureExecutablePermission(umuBinaryPath);
 
-    // On Gamescope (Steam Deck game mode), the UI runs on :1 but games must
-    // run on :0 (the XWayland Gamescope composites for game rendering).
-    const gamescopeGameDisplay = process.env["GAMESCOPE_WAYLAND_DISPLAY"]
-      ? { DISPLAY: ":0" }
+    // On Steam Deck game mode (Gamescope), umu-run's window management code
+    // that sets the STEAM_GAME X11 atom (needed for Gamescope to bring the
+    // game window to front) only runs when container=flatpak is set.
+    // We fake it here so umu activates that code path for AppImage launches too.
+    // See: https://github.com/Open-Wine-Components/umu-launcher/blob/main/umu/umu_run.py
+    const gamescopeEnv = process.env["GAMESCOPE_WAYLAND_DISPLAY"]
+      ? { container: "flatpak" }
       : {};
 
     const launchEnv = {
@@ -248,7 +251,7 @@ export class Umu {
       ...(options?.protonPath ? { PROTONPATH: options.protonPath } : {}),
       ...(options?.useMangohud ? { MANGOHUD: "1" } : {}),
       ...resolvedLaunchCommand.env,
-      ...gamescopeGameDisplay,
+      ...gamescopeEnv,
     };
 
     const envCommandPart = Object.entries(launchEnv)
