@@ -2,6 +2,7 @@
 
 .content-sidebar {
   height: 100%;
+  overflow-y: auto;
   flex-shrink: 0;
   width: 280px;
   display: flex;
