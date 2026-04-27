@@ -27,7 +27,7 @@ const INITIAL_REPEAT_DELAY = 400;
 const REPEAT_INTERVAL = 120;
 
 // Analogue stick dead-zone
-const STICK_DEAD_ZONE = 0.35;
+const STICK_DEAD_ZONE = 0.1;
 
 // ---------- DEBUG OVERLAY ----------
 function getOrCreateDebugOverlay(): HTMLElement {
