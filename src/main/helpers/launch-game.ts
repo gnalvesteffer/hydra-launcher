@@ -17,6 +17,16 @@ import { isGamemodeAvailable } from "./is-gamemode-available";
 import { isMangohudAvailable } from "./is-mangohud-available";
 import { resolveLaunchCommand } from "./resolve-launch-command";
 
+// On Gamescope (Steam Deck game mode), the UI runs on DISPLAY=:1 but games
+// must run on :0 where Gamescope composites the game layer.
+const getGamescopeDisplayEnv = (): Record<string, string> => {
+  if (process.env["GAMESCOPE_WAYLAND_DISPLAY"]) {
+    return { DISPLAY: ":0" };
+  }
+  return {};
+};
+
+
 export interface LaunchGameOptions {
   shop: GameShop;
   objectId: string;
@@ -63,6 +73,7 @@ const launchNatively = (
       env: {
         ...process.env,
         ...resolvedLaunchCommand.env,
+        ...getGamescopeDisplayEnv(),
       },
     }
   );
@@ -99,6 +110,7 @@ const launchWithWine = async (
         env: {
           ...process.env,
           ...resolvedLaunchCommand.env,
+          ...getGamescopeDisplayEnv(),
         },
       }
     );

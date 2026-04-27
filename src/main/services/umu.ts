@@ -233,6 +233,12 @@ export class Umu {
     fs.mkdirSync(path.dirname(umuLogPath), { recursive: true });
     ensureExecutablePermission(umuBinaryPath);
 
+    // On Gamescope (Steam Deck game mode), the UI runs on :1 but games must
+    // run on :0 (the XWayland Gamescope composites for game rendering).
+    const gamescopeGameDisplay = process.env["GAMESCOPE_WAYLAND_DISPLAY"]
+      ? { DISPLAY: ":0" }
+      : {};
+
     const launchEnv = {
       PROTON_LOG: "1",
       ...(options?.gameId ? { GAMEID: `umu-${options.gameId}` } : {}),
@@ -242,6 +248,7 @@ export class Umu {
       ...(options?.protonPath ? { PROTONPATH: options.protonPath } : {}),
       ...(options?.useMangohud ? { MANGOHUD: "1" } : {}),
       ...resolvedLaunchCommand.env,
+      ...gamescopeGameDisplay,
     };
 
     const envCommandPart = Object.entries(launchEnv)
