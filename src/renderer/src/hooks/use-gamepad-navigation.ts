@@ -135,7 +135,7 @@ function focusSearch() {
   const search = document.querySelector<HTMLElement>(
     'input[type="search"], input[placeholder*="earch"], input[placeholder*="ilter"]'
   );
-  search?.focus();
+  if (search && document.activeElement !== search) search.focus();
 }
 
 function scrollFromPoint(x: number, y: number, deltaX: number, deltaY: number) {
@@ -426,8 +426,11 @@ export function useGamepadNavigation() {
         const descendantInput = rtTarget?.querySelector("input, textarea, [contenteditable]") as HTMLElement | null;
         const inputEl = ancestorInput ?? descendantInput;
         if (inputEl) {
-          // For inputs: only click (no mousedown) to avoid double Steam keyboard
-          inputEl.focus();
+          // Only focus if not already active — re-focusing an active input
+          // can trigger a second Steam virtual keyboard instance.
+          if (document.activeElement !== inputEl) {
+            inputEl.focus();
+          }
         } else {
           dispatchMouseEvent("mousedown", x, y);
           dispatchMouseEvent("mouseup",   x, y);
