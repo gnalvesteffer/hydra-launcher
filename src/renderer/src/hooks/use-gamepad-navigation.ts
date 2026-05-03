@@ -344,11 +344,9 @@ export function useGamepadNavigation() {
         //   "standard" (Xbox/DS4 in browser standard mode): RX=axes[2], RY=axes[3]
         //   non-standard (Steam Deck, many Linux HID): triggers on axes[2]/[3], RX=axes[4], RY=axes[5]
         // axes[2]=LT, axes[5]=RT (triggers), so right stick is always axes[3]=RX, axes[4]=RY
-        const isStandard = gamepad.mapping === "standard";
-        // Standard mapping: RX=axes[2], RY=axes[3]
-        // Non-standard (Steam Deck/Linux HID): triggers occupy axes[2]/[5], RX=axes[3], RY=axes[4]
-        const rx = isStandard ? (gamepad.axes[2] ?? 0) : (gamepad.axes[3] ?? 0);
-        const ry = isStandard ? (gamepad.axes[3] ?? 0) : (gamepad.axes[4] ?? 0);
+        // Right stick: axes[2]=RX (left/right), axes[3]=RY (up/down)
+        const rx = gamepad.axes[2] ?? 0;
+        const ry = gamepad.axes[3] ?? 0;
 
         // DEBUG: log all axes every ~120 frames so we can identify the right-stick axis indices
         if (Math.floor(now / 2000) !== Math.floor((now - 16) / 2000)) {
