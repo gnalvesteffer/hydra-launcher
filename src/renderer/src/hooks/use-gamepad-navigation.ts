@@ -372,12 +372,9 @@ export function useGamepadNavigation() {
         if (Math.abs(rx) > STICK_DEAD_ZONE) totalRx += rx;
         if (Math.abs(ry) > STICK_DEAD_ZONE) totalRy += ry;
 
-        // RT = left click  (axes[5]: idle=-1, pressed=+1, threshold > 0)
-        // LT = right click (axes[2]: idle=-1, pressed=+1, threshold > 0)
-        const rtAxisVal = gamepad.axes[5] ?? -1;
-        const ltAxisVal = gamepad.axes[2] ?? -1;
-        const rtActive = rtAxisVal > 0;
-        const ltActive = ltAxisVal > 0;
+        // buttons[5] = left click (RT analog trigger), buttons[6] = right click (LT analog trigger)
+        const rtActive = (gamepad.buttons[5]?.value ?? 0) > 0.1;
+        const ltActive = (gamepad.buttons[6]?.value ?? 0) > 0.1;
 
         const rtKey = `${gamepad.index}_rt`;
         const rtWasPressed = buttonStates.current.get(rtKey)?.pressed ?? false;
