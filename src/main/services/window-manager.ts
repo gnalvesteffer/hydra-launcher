@@ -151,6 +151,23 @@ export class WindowManager {
       this.mainWindow.maximize();
     }
 
+    
+    // Steam Deck virtual keyboard sends key events via XTest AND the input-method layer,
+    // causing every keystroke to be delivered twice to Electron. Deduplicate by cancelling
+    // any key event that arrives within 30ms of an identical key from the same source.
+    const _keyDedup = new Map<string, number>();
+    this.mainWindow.webContents.on("before-input-event", (_event, input) => {
+      if (input.type !== "keyDown") return;
+      const dedupeKey = `${input.key}_${input.modifiers.join(",")}`;
+      const lastTime = _keyDedup.get(dedupeKey) ?? 0;
+      const now = Date.now();
+      if (now - lastTime < 30) {
+        _event.preventDefault();
+        return;
+      }
+      _keyDedup.set(dedupeKey, now);
+    });
+
     this.mainWindow.webContents.session.webRequest.onBeforeSendHeaders(
       (details, callback) => {
         if (
